@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(gpu-switcher VERSION 1.0 LANGUAGES CXX)
+project(gpu-rr-switcher VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED 1)
@@ -12,6 +12,7 @@ set(SOURCES
     src/main.cpp
     src/powerMonitor.cpp
     src/displayManager.cpp
+    src/gpuManager.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
