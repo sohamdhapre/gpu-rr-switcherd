@@ -43,30 +43,32 @@ powerMonitor::powerMonitor()
 }
 
 
-void powerMonitor::startListening()
+std::string powerMonitor::startListening()
 {
     std::cout <<"Start listening called\n";
     struct pollfd pfd;
     pfd.fd = fd;
     pfd.events = POLLIN;
 
-    while(1)
-    {
-        int ret = poll(&pfd, 1, -1);
+    
+    
+    int ret = poll(&pfd, 1, -1);
 
-        if(ret > 0 && (pfd.revents && POLLIN))
+    if(ret > 0 && (pfd.revents && POLLIN))
+    {
+        struct udev_device* device = udev_monitor_receive_device(udevMonitor);
+        std::string devnode = udev_device_get_sysname(device);
+        if (devnode.find("AC") != std::string::npos || devnode.find("ADP") != std::string::npos) 
         {
-            struct udev_device* device = udev_monitor_receive_device(udevMonitor);
-            std::string devnode = udev_device_get_sysname(device);
-            if (devnode.find("AC") != std::string::npos || devnode.find("ADP") != std::string::npos) 
-            {
-                std::string action = udev_device_get_action(device);
-                std::cout << "Hardware Event Triggered: action:" << action << " on devnode:" << devnode << "\n";
-                std::cout << "Battery status is: " << powerMonitor::getBatteryStatus() << '\n';
-                
-            }
+            std::string action = udev_device_get_action(device);
+            std::cout << "Hardware Event Triggered: action:" << action << " on devnode:" << devnode << "\n";
+            std::cout << "Battery status is: " << powerMonitor::getBatteryStatus() << '\n';
+
+            return getBatteryStatus();
+            
         }
     }
+    return getBatteryStatus();
 
 }
 

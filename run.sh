@@ -16,4 +16,4 @@ cmake --build .
 
 echo "[4/4] Executing gpu-switcher (Requires Sudo)..."
 
-sudo ./gpu-rr-switcher
+sudo ./gpu-rr-switcherd

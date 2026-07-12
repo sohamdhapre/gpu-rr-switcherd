@@ -1,17 +1,34 @@
 #include <iostream>
+#include <string>
 #include "powerMonitor.h"
 #include "displayManager.h"
 #include "gpuManager.h"
 
-int main (void) 
+int main (void)
 {
     std::cout << "Prog Started\n";
 
-    if(1)
+    powerMonitor mon;
+    std::string batteryStatus;
+    displayManager manager;
+    while(1)
     {
-        std::cout<<"Set to hybrid  mode"<<std::endl;
+    batteryStatus = mon.startListening();
+
+    if(batteryStatus=="Discharging")
+    {
+        manager.setRefreshRateToMin();
+        // gpuManager::setToIntegratedMode();
+
+    }
+    else
+    {
+        manager.setRefreshRateToMax();
+        // gpuManager::setToHybridMode();
     }
 
 
+
+    }
     return 0;
 }

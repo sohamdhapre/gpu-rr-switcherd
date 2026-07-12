@@ -12,7 +12,7 @@ public:
     powerMonitor();
     ~powerMonitor();
 
-    void startListening();
+    std::string startListening();
     std::string getBatteryStatus();
 
 private:

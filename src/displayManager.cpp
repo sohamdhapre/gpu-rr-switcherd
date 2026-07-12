@@ -2,6 +2,10 @@
 #include <iostream>
 #include<vector>
 #include<map>
+#include <sdbus-c++/sdbus-c++.h>
+#include <unistd.h>
+#include <sys/types.h>
+
 
 //Connector Info: (connector_name, vendor, product, serial)
 using ConnectorInfo = sdbus::Struct<std::string, std::string, std::string, std::string>;
@@ -9,10 +13,10 @@ using ConnectorInfo = sdbus::Struct<std::string, std::string, std::string, std::
 // Mode Info: (mode_id, width, height, refresh_rate, preferred_scale, supported_scales, properties)
 using ModeInfo = sdbus::Struct<std::string, int32_t, int32_t, double, double, std::vector<double>, std::map<std::string, sdbus::Variant>>;
 
-//The Full Monitor Object: (ConnectorInfo, array_of_modes, monitor_properties)
+//Full Monitor Object: (ConnectorInfo, array_of_modes, monitor_properties)
 using MonitorStruct = sdbus::Struct<ConnectorInfo, std::vector<ModeInfo>, std::map<std::string, sdbus::Variant>>;
 
-//The Logical Monitor Object (X, Y, Scaling, Transform, isPrimary, ConnectorInfo, Properties)
+//Logical Monitor Object (X, Y, Scaling, Transform, isPrimary, ConnectorInfo, Properties)
 using LogicalMonitorStruct = sdbus::Struct<int32_t, int32_t, double, uint32_t, bool, std::vector<ConnectorInfo>, std::map<std::string, sdbus::Variant>>;
 
 // (connector_name, target_mode_id, properties)
@@ -30,17 +34,44 @@ using ApplyLogicalMonitor = sdbus::Struct<int32_t, int32_t, double, uint32_t, bo
 // };
 
 
+// std::unique_ptr<sdbus::IConnection> displayManager::connection = nullptr;
+// std::unique_ptr<sdbus::IProxy> displayManager::displayConfigProxy = nullptr;
+
 displayManager::displayManager()
 {
     initDBus();
 }
 
+const char* sudoUidStr = std::getenv("SUDO_UID");
+uid_t user_uid = sudoUidStr ? std::stoi(sudoUidStr) : user_uid;
+uid_t root_uid = geteuid();
+
 int displayManager::initDBus()
 {
+
+    
     try 
-    {
+    {   
+        
+        
+
+        std::string runtimeDir = "/run/user/" + std::to_string(user_uid);
+        std::string busAddress = "unix:path=" + runtimeDir + "/bus";
+        
+        setenv("XDG_RUNTIME_DIR", runtimeDir.c_str(), 1);
+        setenv("DBUS_SESSION_BUS_ADDRESS", busAddress.c_str(), 1);
+
+        if (seteuid(user_uid) != 0) 
+        {
+            std::cerr << "Error: Failed to drop privileges to UID " << user_uid << "\n";
+        }
+        else{
+        std::cout<<"Dropped to UID: "<<user_uid<<std::endl;
+        }
         connection = sdbus::createSessionBusConnection();
         
+
+
         displayConfigProxy = sdbus::createProxy
         (
             *connection, 
@@ -48,12 +79,17 @@ int displayManager::initDBus()
             sdbus::ObjectPath("/org/gnome/Mutter/DisplayConfig")
         );
         std::cout<<"DBus initialised\n";
+        if (seteuid(root_uid) != 0) 
+        {
+            std::cerr << "Error: Failed to restore root privileges!\n";
+            exit(1);
+        }
         return 1;
     } 
     catch (const sdbus::Error& e) 
     {
-        std::cerr << "[Display] D-Bus connection failed: " << e.getMessage() << std::endl;
-        return 0;
+        std::cerr << "Error: D-Bus connection failed: " << e.getMessage() << std::endl;
+        exit (1);
     }
 }
 
@@ -102,10 +138,23 @@ displayState displayManager::getCurrentState()
     std::vector<MonitorStruct> monitors;
     std::vector<LogicalMonitorStruct> logicalMonitors;
     std::map<std::string, sdbus::Variant> properties;
-
-    displayConfigProxy->callMethod("GetCurrentState")
+    // if (seteuid(user_uid) != 0) 
+    // {
+    //     std::cerr << "Error: Failed to drop privileges to UID " << user_uid << "\n";
+    // }
+    // else{
+    //     std::cout<<"Dropped to UID: "<<user_uid<<std::endl;
+    // }
+    std::cout<<"Calling GetCurrentState Method"<<std::endl;
+        displayConfigProxy->callMethod("GetCurrentState")
                         .onInterface("org.gnome.Mutter.DisplayConfig")  
                         .storeResultsTo(serial, monitors, logicalMonitors, properties);
+    std::cout<<"Method GetCurrentState Sucessfully Called\n";
+    // if (seteuid(root_uid) != 0) 
+    // {
+    //     std::cerr << "Error: Failed to restore root privileges!\n";
+    //     exit(1);
+    // }
 
     return displayState{serial, monitors, logicalMonitors, properties};
 }
@@ -153,7 +202,7 @@ int displayManager::setRefreshRateToMax()
 
     if(currentWidth == 0 || currentHeight == 0) 
     {
-        std::cerr<<"Current mode not found\n";
+        std::cerr<<"Error: Current display mode not found\n";
         return 0;
     }
 
@@ -201,7 +250,7 @@ int displayManager::setRefreshRateToMax()
     }
     catch (const sdbus::Error& e) 
     {
-        std::cerr << "Failed to apply new layout(For changing the refresh rate): " << e.getMessage() << "\n";
+        std::cerr << "Error: Failed to apply new layout(For changing the refresh rate): " << e.getMessage() << "\n";
         return 0;
     }
 }
@@ -220,7 +269,7 @@ int displayManager::setRefreshRateToMin()
 
     auto modes = monitor.template get<1>();
 
-    double minRefreshRate = 1000.0; 
+    double minRefreshRate = 1000; 
     int32_t currentWidth = 0, currentHeight = 0;
     std::string minModeID = "";
 
@@ -243,7 +292,7 @@ int displayManager::setRefreshRateToMin()
 
     if(currentWidth == 0 || currentHeight == 0) 
     {
-        std::cerr<<"Current mode not found\n\n";
+        std::cerr<<"Error: Current mode not found\n\n";
         return 0;
     }
     for(const auto& mode: modes)
@@ -286,7 +335,7 @@ int displayManager::setRefreshRateToMin()
     }
     catch (const sdbus::Error& e) 
     {
-        std::cerr << "Failed to apply new layout (Min): " << e.getMessage() << "\n";
+        std::cerr << "Error: Failed to apply new layout (Min): " << e.getMessage() << "\n";
         return 0;
     }
 }
