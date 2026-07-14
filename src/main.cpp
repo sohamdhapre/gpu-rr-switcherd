@@ -13,22 +13,29 @@ int main (void)
     displayManager manager;
     while(1)
     {
-    batteryStatus = mon.startListening();
+        
 
-    if(batteryStatus=="Discharging")
-    {
-        manager.setRefreshRateToMin();
-        // gpuManager::setToIntegratedMode();
+        if(!mon.isPluggedIn())
+        {
+            manager.setRefreshRateToMin();
+            
+            if(gpuManager::getGPUMode() !=  Mode::integrated)
+            {
+                gpuManager::promptRestart(Mode::integrated);
+            }   
+            
+        }
+        else
+        {
+            manager.setRefreshRateToMax();
+            if(gpuManager::getGPUMode() != Mode::hybrid)
+            {
+                gpuManager::promptRestart(Mode::hybrid);
+            }
+        }
+        mon.startListening();
 
     }
-    else
-    {
-        manager.setRefreshRateToMax();
-        // gpuManager::setToHybridMode();
-    }
 
-
-
-    }
     return 0;
 }

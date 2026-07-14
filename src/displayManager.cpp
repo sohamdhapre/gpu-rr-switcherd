@@ -25,26 +25,12 @@ using ApplyConnectorInfo = sdbus::Struct<std::string, std::string, std::map<std:
 // (x, y, scale, transform,isPrimary, list_of_connectors)
 using ApplyLogicalMonitor = sdbus::Struct<int32_t, int32_t, double, uint32_t, bool, std::vector<ApplyConnectorInfo>>;
 
-// using displayState = struct 
-// {
-//     uint32_t serial = 0;
-//     std::vector<MonitorStruct> monitors;
-//     std::vector<LogicalMonitorStruct> logicalMonitors;
-//     std::map<std::string, sdbus::Variant> properties;
-// };
 
-
-// std::unique_ptr<sdbus::IConnection> displayManager::connection = nullptr;
-// std::unique_ptr<sdbus::IProxy> displayManager::displayConfigProxy = nullptr;
 
 displayManager::displayManager()
 {
     initDBus();
 }
-
-const char* sudoUidStr = std::getenv("SUDO_UID");
-uid_t user_uid = sudoUidStr ? std::stoi(sudoUidStr) : user_uid;
-uid_t root_uid = geteuid();
 
 int displayManager::initDBus()
 {
@@ -53,7 +39,9 @@ int displayManager::initDBus()
     try 
     {   
         
-        
+        const char* sudoUidStr = std::getenv("SUDO_UID");
+        uid_t user_uid = sudoUidStr ? std::stoi(sudoUidStr) : 1000;
+        uid_t root_uid = geteuid();
 
         std::string runtimeDir = "/run/user/" + std::to_string(user_uid);
         std::string busAddress = "unix:path=" + runtimeDir + "/bus";
@@ -92,8 +80,6 @@ int displayManager::initDBus()
         exit (1);
     }
 }
-
-
 
 double displayManager::getCurrentRefreshRate()
 {
@@ -138,23 +124,23 @@ displayState displayManager::getCurrentState()
     std::vector<MonitorStruct> monitors;
     std::vector<LogicalMonitorStruct> logicalMonitors;
     std::map<std::string, sdbus::Variant> properties;
-    // if (seteuid(user_uid) != 0) 
-    // {
-    //     std::cerr << "Error: Failed to drop privileges to UID " << user_uid << "\n";
-    // }
-    // else{
-    //     std::cout<<"Dropped to UID: "<<user_uid<<std::endl;
-    // }
+
     std::cout<<"Calling GetCurrentState Method"<<std::endl;
+    try
+    {
         displayConfigProxy->callMethod("GetCurrentState")
-                        .onInterface("org.gnome.Mutter.DisplayConfig")  
-                        .storeResultsTo(serial, monitors, logicalMonitors, properties);
+                    .onInterface("org.gnome.Mutter.DisplayConfig")  
+                    .storeResultsTo(serial, monitors, logicalMonitors, properties);
+    }
+    catch(const sdbus::Error& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+    
+    
+    
     std::cout<<"Method GetCurrentState Sucessfully Called\n";
-    // if (seteuid(root_uid) != 0) 
-    // {
-    //     std::cerr << "Error: Failed to restore root privileges!\n";
-    //     exit(1);
-    // }
+
 
     return displayState{serial, monitors, logicalMonitors, properties};
 }
@@ -254,7 +240,6 @@ int displayManager::setRefreshRateToMax()
         return 0;
     }
 }
-
 
 int displayManager::setRefreshRateToMin()
 {

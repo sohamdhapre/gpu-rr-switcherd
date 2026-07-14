@@ -8,16 +8,17 @@
 
 
 class powerMonitor {
-public:
-    powerMonitor();
-    ~powerMonitor();
+    public:
+        powerMonitor();
+        ~powerMonitor();
 
-    std::string startListening();
-    std::string getBatteryStatus();
+        void startListening();
+        std::string getBatteryStatus();
+        bool isPluggedIn();
 
-private:
-    struct udev* udevContext;
-    struct udev_monitor* udevMonitor;
-    int fd;
+    private:
+        struct udev* udevContext;
+        struct udev_monitor* udevMonitor;
+        int fd;
 
 };

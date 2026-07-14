@@ -67,7 +67,55 @@ ACTION=="unbind", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x0300
 ACTION=="unbind", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x030200", TEST=="power/control", ATTR{power/control}="on"
 )";
 
+void gpuManager::promptRestart(Mode mode) 
+{
+    std::cout<<"promptRestart called\n";
 
+    std::thread([mode]()
+    {
+        std::string command;
+        if(mode == Mode::integrated)
+        {
+        command = "sudo -u $(id -un 1000) env XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send -w -u critical -A 'reboot=Restart Now' 'AC power disabled' 'A reboot is required to disable the dGPU.' 2>&1";
+        }
+        else if (mode == Mode::hybrid)
+        {
+        command = "sudo -u $(id -un 1000) env XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send -w -u critical -A 'reboot=Restart Now' 'AC power enabled' 'A reboot is required to enable the dGPU.' 2>&1";
+        }
+        std::array<char, 128> buffer;
+        std::string result;
+        
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
+        
+        if (!pipe) 
+        {
+            std::cerr << "Failed to open pipe for notification.\n";
+            return;
+        }
+        
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) 
+        {
+            result += buffer.data();
+        }
+        std::cout << "[Notification Output] " << result << "\n";
+        
+        if (result.find("reboot") != std::string::npos) 
+        {
+            std::cout << "[Action] User clicked Restart. Rebooting system...\n";
+            std::cout<<"Reboot selected\n";
+            
+
+            std::system("reboot now");
+            return;
+        }
+
+        else
+        {
+            return;
+        }
+
+    }).detach();
+}
 
 int gpuManager::enableNvidiaPersistanceService()
 {
@@ -87,7 +135,6 @@ int gpuManager::enableNvidiaPersistanceService()
     }
 }
 
-
 int gpuManager::disableNvidiaPersistanceService()
 {
     const char* command = "systemctl disable nvidia-persistenced.service > /dev/null 2>&1";
@@ -105,7 +152,6 @@ int gpuManager::disableNvidiaPersistanceService()
         return 0;
     }
 }
-
 
 int gpuManager::rebuild()
 {
@@ -147,7 +193,6 @@ int gpuManager::rebuild()
     return 0; 
 }
 
-
 int gpuManager::setToIntegratedMode()
 {
 
@@ -181,8 +226,8 @@ int gpuManager::setToIntegratedMode()
         return 0;
     }
 
+    
     rebuild();
-
     return 1;
 }
 
@@ -219,7 +264,6 @@ int gpuManager::setToHybridMode()
     }
 
     rebuild();
-
     return 1;
 
 }
@@ -235,4 +279,14 @@ int gpuManager::clean()
 
     std::cout << "Cleaned up previous configuration files.\n";
     return 1;
+}
+
+Mode gpuManager::getGPUMode()
+{
+    if (fs::exists("/sys/module/nvidia")) 
+    {
+        return Mode::hybrid;
+    }
+    
+    return Mode::integrated;
 }

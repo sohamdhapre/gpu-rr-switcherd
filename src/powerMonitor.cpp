@@ -3,6 +3,10 @@
 #include <poll.h>
 #include <unistd.h>
 #include <fstream>
+#include <filesystem>
+
+
+namespace fs = std::filesystem;
 
 powerMonitor::powerMonitor()
 {
@@ -35,40 +39,43 @@ powerMonitor::powerMonitor()
 
 }
 
-
-    powerMonitor::~powerMonitor()
+powerMonitor::~powerMonitor()
 {
     if (udevMonitor) udev_monitor_unref(udevMonitor);
     if (udevContext) udev_unref(udevContext);
 }
 
-
-std::string powerMonitor::startListening()
+void powerMonitor::startListening()
 {
     std::cout <<"Start listening called\n";
     struct pollfd pfd;
     pfd.fd = fd;
     pfd.events = POLLIN;
 
-    
-    
-    int ret = poll(&pfd, 1, -1);
-
-    if(ret > 0 && (pfd.revents && POLLIN))
+    while(1)
     {
-        struct udev_device* device = udev_monitor_receive_device(udevMonitor);
-        std::string devnode = udev_device_get_sysname(device);
-        if (devnode.find("AC") != std::string::npos || devnode.find("ADP") != std::string::npos) 
-        {
-            std::string action = udev_device_get_action(device);
-            std::cout << "Hardware Event Triggered: action:" << action << " on devnode:" << devnode << "\n";
-            std::cout << "Battery status is: " << powerMonitor::getBatteryStatus() << '\n';
+    
+        int ret = poll(&pfd, 1, -1);
 
-            return getBatteryStatus();
-            
+        if(ret > 0 && (pfd.revents & POLLIN))
+        {
+            struct udev_device* device = udev_monitor_receive_device(udevMonitor);
+            std::string devnode = udev_device_get_sysname(device);
+            if (devnode.find("AC") != std::string::npos || devnode.find("ADP") != std::string::npos) 
+            {
+                std::string action = udev_device_get_action(device);
+                std::cout << "Hardware Event Triggered: action:" << action << " on devnode:" << devnode << "\n";
+
+                udev_device_unref(device);
+                return;
+                
+            }
+            udev_device_unref(device);
         }
+        else continue;
     }
-    return getBatteryStatus();
+    
+    return;
 
 }
 
@@ -85,4 +92,42 @@ std::string powerMonitor::getBatteryStatus()
     std::string status;
     getline(file, status);
     return status;
+}
+
+bool powerMonitor::isPluggedIn()
+{
+    std::ifstream file ("/sys/class/power_supply/ADP0/online");
+    if(fs::exists("/sys/class/power_supply/ADP0/online"))
+    {
+        std::ifstream file ("/sys/class/power_supply/ADP0/online");
+        std::string status;
+        file>>status; 
+        return status == "1";
+    }
+  
+    else if(fs::exists("/sys/class/power_supply/AC/online"))
+    {
+        std::ifstream file ("/sys/class/power_supply/AC/online");
+        std::string status;
+        file>>status; 
+        return status == "1";
+    }
+    else if(fs::exists("/sys/class/power_supply/ACAD/online"))
+    {
+        std::ifstream file ("/sys/class/power_supply/ACAD/online");
+        std::string status;
+        file>>status; 
+        return status == "1";
+    }
+    else if(fs::exists("/sys/class/power_supply/ADP1/online"))
+    {
+        std::ifstream file ("/sys/class/power_supply/ADP1/online");
+        std::string status;
+        file>>status; 
+        return status == "1";
+    }
+    else
+    {
+        return !(getBatteryStatus() == "Discharging");
+    }
 }

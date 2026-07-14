@@ -42,16 +42,9 @@ class displayManager
         displayState getCurrentState();
 
 
-
     private:
         std::unique_ptr<sdbus::IProxy> displayConfigProxy;
         std::unique_ptr<sdbus::IConnection> connection;
         int initDBus();
-
-
-        
-
-
-
 
 };
