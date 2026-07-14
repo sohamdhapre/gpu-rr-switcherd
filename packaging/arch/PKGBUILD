@@ -1,0 +1,33 @@
+pkgname=gpu-rr-switcherd-git
+_pkgname=gpu-rr-switcherd
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Early-boot GPU management and dynamic refresh rate Wayland daemon"
+arch=('x86_64')
+url="https://github.com/sohamdhapre/gpu-rr-switcherd"
+license=('MIT')
+depends=('sdbus-cpp' 'systemd-libs' 'dracut' 'libnotify')
+makedepends=('git' 'gcc')
+provides=('gpu-rr-switcherd')
+conflicts=('gpu-rr-switcher' 'gpu-rr-switcherd')
+source=("git+https://github.com/sohamdhapre/gpu-rr-switcherd.git")
+sha256sums=('SKIP')
+
+build() {
+    cd "$_pkgname"
+    g++ src/main.cpp src/displayManager.cpp src/gpuManager.cpp src/powerMonitor.cpp -std=c++17 -lsdbus-c++ -ludev -o gpu-rr-switcherd
+}
+
+package() {
+    cd "$_pkgname"
+    
+    # Install the binary
+    install -Dm755 gpu-rr-switcherd "$pkgdir/usr/bin/gpu-rr-switcherd"
+    
+    # Install the systemd service
+    install -Dm644 gpu-rr-switcherd.service "$pkgdir/usr/lib/systemd/system/gpu-rr-switcherd.service"
+    
+    # Install the dracut hooks
+    install -Dm755 check-power.sh "$pkgdir/usr/lib/dracut/modules.d/99gpu-switcher/check-power.sh"
+    install -Dm755 module-setup.sh "$pkgdir/usr/lib/dracut/modules.d/99gpu-switcher/module-setup.sh"
+}
