@@ -1,4 +1,4 @@
-This is a lightweight C++ system daemon designed to optimize power consumption Linux laptops.
+This is a lightweight C++ system daemon designed to optimize power consumption Linux laptops, running GNOME with Wayland.
 Features:
 >Early-Boot GPU Management: During boot, the check-power.sh dracut hook evaluates the AC power state. If the laptop is on battery, it generates blacklist-nvidia.conf and 50-remove-nvidia.rules within the live initramfs environment. This blocks the kernel from loading the Nvidia drivers and instructs the PCI subsystem to sever power to the dGPU before the desktop environment even initializes.
 
