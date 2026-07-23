@@ -11,7 +11,7 @@ For Arch Linux and Arch-based distributions (Manjaro, EndeavourOS), the daemon i
 1. Clone the repository and build the package:
 
 git clone [https://github.com/sohamdhapre/gpu-rr-switcherd.git](https://github.com/sohamdhapre/gpu-rr-switcherd.git)
-cd gpu-rr-switcherd
+cd gpu-rr-switcherd/packaging/arch
 makepkg -si
 
 
