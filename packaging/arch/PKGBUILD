@@ -15,7 +15,7 @@ sha256sums=('SKIP')
 
 build() {
     cd "$_pkgname"
-    g++ src/main.cpp src/displayManager.cpp src/gpuManager.cpp src/powerMonitor.cpp -std=c++17 -lsdbus-c++ -ludev -o gpu-rr-switcherd
+    g++ src/main.cpp src/displayManager.cpp src/gpuManager.cpp src/powerMonitor.cpp -std=c++20 -lsdbus-c++ -ludev -o gpu-rr-switcherd
 }
 
 package() {
